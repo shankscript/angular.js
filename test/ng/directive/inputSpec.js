@@ -551,12 +551,8 @@ describe('input', function() {
 
       expect(inputElm.val()).toBe('2013-01');
 
-      try {
-        //set to text for browsers with datetime-local validation.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {
-        //for IE8
-      }
+      //set to text for browsers with datetime-local validation.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('stuff');
       expect(inputElm.val()).toBe('stuff');
@@ -613,6 +609,19 @@ describe('input', function() {
     });
 
 
+    it('should use any timezone if specified in the options', function() {
+      var inputElm = helper.compileInput('<input type="month" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      helper.changeInputValueTo('2013-07');
+      expect(+$rootScope.value).toBe(Date.UTC(2013, 5, 30, 19, 0, 0));
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(2014, 5, 30, 19, 0, 0));
+      });
+      expect(inputElm.val()).toBe('2014-07');
+    });
+
+
     it('should label parse errors as `month`', function() {
       var inputElm = helper.compileInput('<input type="month" ng-model="val" name="alias" />', {
         valid: false,
@@ -634,6 +643,17 @@ describe('input', function() {
       helper.changeInputValueTo('2013-12');
       expect(+$rootScope.value).toBe(Date.UTC(2013, 11, 1, 1, 0, 0, 0));
       expect(inputElm.val()).toBe('2013-12');
+    });
+
+    it('should only change the month of a bound date in any timezone', function() {
+      var inputElm = helper.compileInput('<input type="month" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(2013, 6, 31, 20, 0, 0));
+      });
+      helper.changeInputValueTo('2013-09');
+      expect(+$rootScope.value).toBe(Date.UTC(2013, 7, 31, 20, 0, 0));
+      expect(inputElm.val()).toBe('2013-09');
     });
 
     describe('min', function() {
@@ -668,6 +688,14 @@ describe('input', function() {
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.min).toBeTruthy();
       });
+
+      it('should validate if min is empty', function() {
+        $rootScope.minVal = undefined;
+        $rootScope.value = new Date(-9999, 0, 1, 0, 0, 0);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.min).toBeFalsy();
+      });
     });
 
     describe('max', function() {
@@ -701,6 +729,14 @@ describe('input', function() {
 
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.max).toBeTruthy();
+      });
+
+      it('should validate if max is empty', function() {
+        $rootScope.maxVal = undefined;
+        $rootScope.value = new Date(9999, 11, 31, 23, 59, 59);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.max).toBeFalsy();
       });
     });
   });
@@ -752,12 +788,8 @@ describe('input', function() {
 
       expect(inputElm.val()).toBe('2013-W02');
 
-      try {
-        //set to text for browsers with datetime-local validation.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {
-        //for IE8
-      }
+      //set to text for browsers with datetime-local validation.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('stuff');
       expect(inputElm.val()).toBe('stuff');
@@ -814,6 +846,19 @@ describe('input', function() {
     });
 
 
+    it('should use any timezone if specified in the options', function() {
+      var inputElm = helper.compileInput('<input type="week" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      helper.changeInputValueTo('2013-W03');
+      expect(+$rootScope.value).toBe(Date.UTC(2013, 0, 16, 19, 0, 0));
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(2014, 0, 16, 19, 0, 0));
+      });
+      expect(inputElm.val()).toBe('2014-W03');
+    });
+
+
     it('should label parse errors as `week`', function() {
       var inputElm = helper.compileInput('<input type="week" ng-model="val" name="alias" />', {
         valid: false,
@@ -857,6 +902,14 @@ describe('input', function() {
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.min).toBeTruthy();
       });
+
+      it('should validate if min is empty', function() {
+        $rootScope.minVal = undefined;
+        $rootScope.value = new Date(-9999, 0, 1, 0, 0, 0);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.min).toBeFalsy();
+      });
     });
 
     describe('max', function() {
@@ -891,6 +944,14 @@ describe('input', function() {
 
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.max).toBeTruthy();
+      });
+
+      it('should validate if max is empty', function() {
+        $rootScope.maxVal = undefined;
+        $rootScope.value = new Date(9999, 11, 31, 23, 59, 59);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.max).toBeFalsy();
       });
     });
   });
@@ -928,12 +989,8 @@ describe('input', function() {
 
       expect(inputElm.val()).toBe('2009-01-06T16:25:00.000');
 
-      try {
-        //set to text for browsers with datetime-local validation.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {
-        //for IE8
-      }
+      //set to text for browsers with datetime-local validation.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('stuff');
       expect(inputElm.val()).toBe('stuff');
@@ -987,6 +1044,30 @@ describe('input', function() {
         $rootScope.value = new Date(Date.UTC(2001, 0, 1, 1, 2, 0));
       });
       expect(inputElm.val()).toBe('2001-01-01T01:02:00.000');
+    });
+
+
+    it('should use any timezone if specified in the options', function() {
+      var inputElm = helper.compileInput('<input type="datetime-local" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      helper.changeInputValueTo('2000-01-01T06:02');
+      expect(+$rootScope.value).toBe(Date.UTC(2000, 0, 1, 1, 2, 0));
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(2001, 0, 1, 1, 2, 0));
+      });
+      expect(inputElm.val()).toBe('2001-01-01T06:02:00.000');
+    });
+
+
+    it('should fallback to default timezone in case an unknown timezone was passed', function() {
+      var inputElm = helper.compileInput(
+        '<input type="datetime-local" ng-model="value1" ng-model-options="{timezone: \'WTF\'}" />' +
+        '<input type="datetime-local" ng-model="value2" />');
+
+      helper.changeGivenInputTo(inputElm.eq(0), '2000-01-01T06:02');
+      helper.changeGivenInputTo(inputElm.eq(1), '2000-01-01T06:02');
+      expect($rootScope.value1).toEqual($rootScope.value2);
     });
 
 
@@ -1070,6 +1151,14 @@ describe('input', function() {
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.min).toBeTruthy();
       });
+
+      it('should validate if min is empty', function() {
+        $rootScope.minVal = undefined;
+        $rootScope.value = new Date(-9999, 0, 1, 0, 0, 0);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.min).toBeFalsy();
+      });
     });
 
     describe('max', function() {
@@ -1103,6 +1192,14 @@ describe('input', function() {
 
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.max).toBeTruthy();
+      });
+
+      it('should validate if max is empty', function() {
+        $rootScope.maxVal = undefined;
+        $rootScope.value = new Date(9999, 11, 31, 23, 59, 59);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.max).toBeFalsy();
       });
     });
 
@@ -1216,12 +1313,8 @@ describe('input', function() {
 
       expect(inputElm.val()).toBe('16:25:00.000');
 
-      try {
-        //set to text for browsers with time validation.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {
-        //for IE8
-      }
+      //set to text for browsers with time validation.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('stuff');
       expect(inputElm.val()).toBe('stuff');
@@ -1273,6 +1366,19 @@ describe('input', function() {
 
       $rootScope.$apply(function() {
         $rootScope.value = new Date(Date.UTC(1971, 0, 1, 23, 2, 0));
+      });
+      expect(inputElm.val()).toBe('23:02:00.000');
+    });
+
+
+    it('should use any timezone if specified in the options', function() {
+      var inputElm = helper.compileInput('<input type="time" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      helper.changeInputValueTo('23:02:00');
+      expect(+$rootScope.value).toBe(Date.UTC(1970, 0, 1, 18, 2, 0));
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(1971, 0, 1, 18, 2, 0));
       });
       expect(inputElm.val()).toBe('23:02:00.000');
     });
@@ -1370,12 +1476,21 @@ describe('input', function() {
         expect(inputElm).toBeInvalid();
         expect($rootScope.form.alias.$error.min).toBeTruthy();
       });
+
+      it('should validate if min is empty', function() {
+        $rootScope.minVal = undefined;
+        $rootScope.value = new Date(-9999, 0, 1, 0, 0, 0);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.min).toBeFalsy();
+      });
     });
 
     describe('max', function() {
       var inputElm;
       beforeEach(function() {
-        inputElm = helper.compileInput('<input type="time" ng-model="value" name="alias" max="22:30:00" />');
+        $rootScope.maxVal = '22:30:00';
+        inputElm = helper.compileInput('<input type="time" ng-model="value" name="alias" max="{{ maxVal }}" />');
       });
 
       it('should invalidate', function() {
@@ -1391,11 +1506,19 @@ describe('input', function() {
         expect(+$rootScope.value).toBe(+new Date(1970, 0, 1, 5, 30, 0));
         expect($rootScope.form.alias.$error.max).toBeFalsy();
       });
+
+     it('should validate if max is empty', function() {
+        $rootScope.maxVal = undefined;
+        $rootScope.value = new Date(9999, 11, 31, 23, 59, 59);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.max).toBeFalsy();
+      });
     });
 
 
     it('should validate even if max value changes on-the-fly', function() {
-      $rootScope.max = '4:02:00';
+      $rootScope.max = '04:02:00';
       var inputElm = helper.compileInput('<input type="time" ng-model="value" name="alias" max="{{max}}" />');
 
       helper.changeInputValueTo('05:34:00');
@@ -1423,7 +1546,7 @@ describe('input', function() {
 
 
     it('should validate even if ng-max value changes on-the-fly', function() {
-      $rootScope.max = '4:02:00';
+      $rootScope.max = '04:02:00';
       var inputElm = helper.compileInput('<input type="time" ng-model="value" name="alias" ng-max="max" />');
 
       helper.changeInputValueTo('05:34:00');
@@ -1497,12 +1620,8 @@ describe('input', function() {
 
       expect(inputElm.val()).toBe('2014-09-14');
 
-      try {
-        //set to text for browsers with date validation.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {
-        //for IE8
-      }
+      //set to text for browsers with date validation.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('1-2-3');
       expect(inputElm.val()).toBe('1-2-3');
@@ -1554,6 +1673,19 @@ describe('input', function() {
 
       $rootScope.$apply(function() {
         $rootScope.value = new Date(Date.UTC(2001, 0, 1));
+      });
+      expect(inputElm.val()).toBe('2001-01-01');
+    });
+
+
+    it('should use any timezone if specified in the options', function() {
+      var inputElm = helper.compileInput('<input type="date" ng-model="value" ng-model-options="{timezone: \'+0500\'}" />');
+
+      helper.changeInputValueTo('2000-01-01');
+      expect(+$rootScope.value).toBe(Date.UTC(1999, 11, 31, 19, 0, 0));
+
+      $rootScope.$apply(function() {
+        $rootScope.value = new Date(Date.UTC(2000, 11, 31, 19, 0, 0));
       });
       expect(inputElm.val()).toBe('2001-01-01');
     });
@@ -1639,11 +1771,21 @@ describe('input', function() {
 
         expect($rootScope.form.myControl.$error.min).toBeTruthy();
       });
+
+      it('should validate if min is empty', function() {
+        var inputElm = helper.compileInput(
+            '<input type="date" name="alias" ng-model="value" min />');
+
+        $rootScope.value = new Date(-9999, 0, 1, 0, 0, 0);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.min).toBeFalsy();
+      });
     });
 
-    describe('max', function()  {
+    describe('max', function() {
 
-      it('should invalidate', function()  {
+      it('should invalidate', function() {
         var inputElm = helper.compileInput('<input type="date" ng-model="value" name="alias" max="2019-01-01" />');
         helper.changeInputValueTo('2019-12-31');
         expect(inputElm).toBeInvalid();
@@ -1667,6 +1809,16 @@ describe('input', function() {
         $rootScope.$digest();
 
         expect($rootScope.form.myControl.$error.max).toBeTruthy();
+      });
+
+      it('should validate if max is empty', function() {
+        var inputElm = helper.compileInput(
+            '<input type="date" name="alias" ng-model="value" max />');
+
+        $rootScope.value = new Date(9999, 11, 31, 23, 59, 59);
+        $rootScope.$digest();
+
+        expect($rootScope.form.alias.$error.max).toBeFalsy();
       });
     });
 
@@ -1756,12 +1908,10 @@ describe('input', function() {
       $rootScope.$apply('age = 123');
       expect(inputElm.val()).toBe('123');
 
-      try {
-        // to allow non-number values, we have to change type so that
-        // the browser which have number validation will not interfere with
-        // this test. IE8 won't allow it hence the catch.
-        inputElm[0].setAttribute('type', 'text');
-      } catch (e) {}
+      // to allow non-number values, we have to change type so that
+      // the browser which have number validation will not interfere with
+      // this test.
+      inputElm[0].setAttribute('type', 'text');
 
       helper.changeInputValueTo('123X');
       expect(inputElm.val()).toBe('123X');
@@ -1852,6 +2002,71 @@ describe('input', function() {
     });
 
 
+    it('should parse exponential notation', function() {
+      var inputElm = helper.compileInput('<input type="number" name="alias" ng-model="value" />');
+
+      // #.###e+##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412e+26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e+26);
+
+      // #.###e##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412e26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e26);
+
+      // #.###e-##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412e-26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e-26);
+
+      // ####e+##
+      $rootScope.form.alias.$setViewValue("123214124123412412e+26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e26);
+
+      // ####e##
+      $rootScope.form.alias.$setViewValue("123214124123412412e26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e26);
+
+      // ####e-##
+      $rootScope.form.alias.$setViewValue("123214124123412412e-26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e-26);
+
+      // #.###E+##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412E+26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e+26);
+
+      // #.###E##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412E26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e26);
+
+      // #.###E-##
+      $rootScope.form.alias.$setViewValue("1.23214124123412412E-26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(1.23214124123412412e-26);
+
+      // ####E+##
+      $rootScope.form.alias.$setViewValue("123214124123412412E+26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e26);
+
+      // ####E##
+      $rootScope.form.alias.$setViewValue("123214124123412412E26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e26);
+
+      // ####E-##
+      $rootScope.form.alias.$setViewValue("123214124123412412E-26");
+      expect(inputElm).toBeValid();
+      expect($rootScope.value).toBe(123214124123412412e-26);
+    });
+
+
     describe('min', function() {
 
       it('should validate', function() {
@@ -1869,10 +2084,15 @@ describe('input', function() {
       });
 
       it('should validate even if min value changes on-the-fly', function() {
-        $rootScope.min = 10;
+        $rootScope.min = undefined;
         var inputElm = helper.compileInput('<input type="number" ng-model="value" name="alias" min="{{min}}" />');
+        expect(inputElm).toBeValid();
 
         helper.changeInputValueTo('15');
+        expect(inputElm).toBeValid();
+
+        $rootScope.min = 10;
+        $rootScope.$digest();
         expect(inputElm).toBeValid();
 
         $rootScope.min = 20;
@@ -1910,10 +2130,15 @@ describe('input', function() {
       });
 
       it('should validate even if the ngMin value changes on-the-fly', function() {
-        $rootScope.min = 10;
+        $rootScope.min = undefined;
         var inputElm = helper.compileInput('<input type="number" ng-model="value" name="alias" ng-min="min" />');
+        expect(inputElm).toBeValid();
 
         helper.changeInputValueTo('15');
+        expect(inputElm).toBeValid();
+
+        $rootScope.min = 10;
+        $rootScope.$digest();
         expect(inputElm).toBeValid();
 
         $rootScope.min = 20;
@@ -1952,10 +2177,15 @@ describe('input', function() {
       });
 
       it('should validate even if max value changes on-the-fly', function() {
-        $rootScope.max = 10;
+        $rootScope.max = undefined;
         var inputElm = helper.compileInput('<input type="number" ng-model="value" name="alias" max="{{max}}" />');
+        expect(inputElm).toBeValid();
 
         helper.changeInputValueTo('5');
+        expect(inputElm).toBeValid();
+
+        $rootScope.max = 10;
+        $rootScope.$digest();
         expect(inputElm).toBeValid();
 
         $rootScope.max = 0;
@@ -1993,10 +2223,15 @@ describe('input', function() {
       });
 
       it('should validate even if the ngMax value changes on-the-fly', function() {
-        $rootScope.max = 10;
+        $rootScope.max = undefined;
         var inputElm = helper.compileInput('<input type="number" ng-model="value" name="alias" ng-max="max" />');
+        expect(inputElm).toBeValid();
 
         helper.changeInputValueTo('5');
+        expect(inputElm).toBeValid();
+
+        $rootScope.max = 10;
+        $rootScope.$digest();
         expect(inputElm).toBeValid();
 
         $rootScope.max = 0;
@@ -2302,8 +2537,18 @@ describe('input', function() {
     describe('URL_REGEXP', function() {
       /* global URL_REGEXP: false */
       it('should validate url', function() {
+        // See valid URLs in RFC3987 (http://tools.ietf.org/html/rfc3987)
         expect(URL_REGEXP.test('http://server:123/path')).toBe(true);
+        expect(URL_REGEXP.test('https://server:123/path')).toBe(true);
+        expect(URL_REGEXP.test('file:///home/user')).toBe(true);
+        expect(URL_REGEXP.test('mailto:user@example.com?subject=Foo')).toBe(true);
+        expect(URL_REGEXP.test('r2-d2.c3-p0://localhost/foo')).toBe(true);
+        expect(URL_REGEXP.test('abc:/foo')).toBe(true);
+        expect(URL_REGEXP.test('http:')).toBe(false);
         expect(URL_REGEXP.test('a@B.c')).toBe(false);
+        expect(URL_REGEXP.test('a_B.c')).toBe(false);
+        expect(URL_REGEXP.test('0scheme://example.com')).toBe(false);
+        expect(URL_REGEXP.test('http://example.com:9999/~~``')).toBe(false);
       });
     });
   });
@@ -2448,14 +2693,17 @@ describe('input', function() {
     });
 
 
-    it('should set the ngTrueValue when required directive is present', function() {
-      var inputElm = helper.compileInput('<input type="checkbox" ng-model="value" required ng-true-value="\'yes\'" />');
+    it('should pass validation for "required" when trueValue is a string', function() {
+      var inputElm = helper.compileInput('<input type="checkbox" required name="cb"' +
+        'ng-model="value" ng-true-value="\'yes\'" />');
 
       expect(inputElm).toBeInvalid();
+      expect($rootScope.form.cb.$error.required).toBe(true);
 
       browserTrigger(inputElm, 'click');
       expect(inputElm[0].checked).toBe(true);
       expect(inputElm).toBeValid();
+      expect($rootScope.form.cb.$error.required).toBeUndefined();
     });
   });
 

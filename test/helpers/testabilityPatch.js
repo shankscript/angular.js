@@ -1,4 +1,4 @@
-/* global jQuery: true, uid: true */
+/* global jQuery: true, uid: true, jqCache: true */
 'use strict';
 
 /**
@@ -12,6 +12,7 @@ if (window._jQuery) _jQuery.event.special.change = undefined;
 if (window.bindJQuery) bindJQuery();
 
 beforeEach(function() {
+
   // all this stuff is not needed for module tests, where jqlite and publishExternalAPI and jqLite are not global vars
   if (window.publishExternalAPI) {
     publishExternalAPI(angular);
@@ -28,7 +29,10 @@ beforeEach(function() {
 
     // reset to jQuery or default to us.
     bindJQuery();
-    jqLiteCacheSizeInit();
+
+    // Clear the cache to prevent memory leak failures from previous tests
+    // breaking subsequent tests unnecessarily
+    jqCache = jqLite.cache = {};
   }
 
   angular.element(document.body).empty().removeData();
@@ -36,6 +40,18 @@ beforeEach(function() {
 
 afterEach(function() {
   var count, cache;
+
+  // both of these nodes are persisted across tests
+  // and therefore the hashCode may be cached
+  var node = document.querySelector('html');
+  if (node) {
+    node.$$hashKey = null;
+  }
+  var bod = document.body;
+  if (bod) {
+    bod.$$hashKey = null;
+  }
+  document.$$hashKey = null;
 
   if (this.$injector) {
     var $rootScope = this.$injector.get('$rootScope');
@@ -72,21 +88,10 @@ afterEach(function() {
     }
   }
 
-
   // copied from Angular.js
-  // we need these two methods here so that we can run module tests with wrapped angular.js
-  function sortedKeys(obj) {
-    var keys = [];
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        keys.push(key);
-      }
-    }
-    return keys.sort();
-  }
-
+  // we need this method here so that we can run module tests with wrapped angular.js
   function forEachSorted(obj, iterator, context) {
-    var keys = sortedKeys(obj);
+    var keys = Object.keys(obj).sort();
     for (var i = 0; i < keys.length; i++) {
       iterator.call(context, obj[keys[i]], keys[i]);
     }
@@ -131,14 +136,7 @@ function dealoc(obj) {
 
 
 function jqLiteCacheSize() {
-  var size = 0;
-  forEach(jqLite.cache, function() { size++; });
-  return size - jqLiteCacheSize.initSize;
-}
-jqLiteCacheSize.initSize = 0;
-
-function jqLiteCacheSizeInit() {
-  jqLiteCacheSize.initSize = jqLiteCacheSize.initSize + jqLiteCacheSize();
+  return Object.keys(jqLite.cache).length;
 }
 
 
@@ -170,8 +168,9 @@ function sortedHtml(element, showNgClass) {
         attrs.push(' class="' + className + '"');
       }
       for (var i = 0; i < attributes.length; i++) {
-        if (i > 0 && attributes[i] == attributes[i - 1])
+        if (i > 0 && attributes[i] == attributes[i - 1]) {
           continue; //IE9 creates dupes. Ignore them!
+        }
 
         var attr = attributes[i];
         if (attr.name.match(/^ng[\:\-]/) ||
@@ -231,8 +230,9 @@ function sortedHtml(element, showNgClass) {
         var tmp = style;
         style = [];
         forEach(tmp, function(value) {
-          if (!value.match(/^max[^\-]/))
+          if (!value.match(/^max[^\-]/)) {
             style.push(value);
+          }
         });
         if (style.length) {
           html += ' style="' + style.join('; ') + ';"';

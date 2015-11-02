@@ -73,8 +73,11 @@ describe('$sniffer', function() {
 
 
   describe('csp', function() {
-    it('should be false by default', function() {
-      expect(sniffer({}).csp).toBe(false);
+    it('should have all rules set to false by default', function() {
+      var csp = sniffer({}).csp;
+      forEach(Object.keys(csp), function(key) {
+        expect(csp[key]).toEqual(false);
+      });
     });
   });
 
@@ -87,11 +90,9 @@ describe('$sniffer', function() {
         var ua = $window.navigator.userAgent.toLowerCase();
         if (/chrome/i.test(ua) || /safari/i.test(ua) || /webkit/i.test(ua)) {
           expectedPrefix = 'Webkit';
-        }
-        else if (/firefox/i.test(ua)) {
+        } else if (/firefox/i.test(ua)) {
           expectedPrefix = 'Moz';
-        }
-        else if (/ie/i.test(ua) || /trident/i.test(ua)) {
+        } else if (/ie/i.test(ua) || /trident/i.test(ua)) {
           expectedPrefix = 'Ms';
         }
         expect($sniffer.vendorPrefix).toBe(expectedPrefix);

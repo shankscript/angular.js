@@ -19,8 +19,9 @@ how to implement them.
 ## What are Directives?
 
 At a high level, directives are markers on a DOM element (such as an attribute, element
-name, comment or CSS class) that tell AngularJS's **HTML compiler** ({@link ng.$compile `$compile`}) to
-attach a specified behavior to that DOM element or even transform the DOM element and its children.
+name, comment or CSS class) that tell AngularJS's **HTML compiler** ({@link ng.$compile `$compile`})
+to attach a specified behavior to that DOM element (e.g. via event listeners), or even to transform
+the DOM element and its children.
 
 Angular comes with a set of these directives built-in, like `ngBind`, `ngModel`, and `ngClass`.
 Much like you create controllers and services, you can create your own directives for Angular to use.
@@ -30,7 +31,7 @@ When Angular {@link guide/bootstrap bootstraps} your application, the
 <div class="alert alert-info">
 **What does it mean to "compile" an HTML template?**
 
-For AngularJS, "compilation" means attaching event listeners to the HTML to make it interactive.
+For AngularJS, "compilation" means attaching directives to the HTML to make it interactive.
 The reason we use the term "compile" is that the recursive process of attaching directives
 mirrors the process of compiling source code in
 [compiled programming languages](http://en.wikipedia.org/wiki/Compiled_languages).
@@ -42,17 +43,28 @@ mirrors the process of compiling source code in
 Before we can write a directive, we need to know how Angular's {@link guide/compiler HTML compiler}
 determines when to use a given directive.
 
-In the following example, we say that the `<input>` element **matches** the `ngModel` directive.
+Similar to the terminology used when an [element **matches** a selector](https://developer.mozilla.org/en-US/docs/Web/API/Element.matches), we say an element **matches** a
+directive when the directive is part of its declaration.
+
+In the following example, we say that the `<input>` element **matches** the `ngModel` directive
 
 ```html
 <input ng-model="foo">
 ```
 
-The following also **matches** `ngModel`:
+The following `<input>` element also **matches** `ngModel`:
 
 ```html
-<input data-ng:model="foo">
+<input data-ng-model="foo">
 ```
+
+And the following <person> element **matches** the `person` directive:
+
+```html
+<person>{{name}}</person>
+```
+
+### Normalization
 
 Angular **normalizes** an element's tag and attribute name to determine which elements match which
 directives. We typically refer to directives by their case-sensitive
@@ -99,6 +111,8 @@ If you want to use an HTML validating tool, you can instead use the `data`-prefi
 `data-ng-bind` for `ngBind`).
 The other forms shown above are accepted for legacy reasons but we advise you to avoid them.
 </div>
+
+### Directive types
 
 `$compile` can match directives based on element names, attributes, class names, as well as comments.
 
@@ -573,14 +587,24 @@ want to reuse throughout your app.
 In this example we will build a directive that displays the current time.
 Once a second, it updates the DOM to reflect the current time.
 
-Directives that want to modify the DOM typically use the `link` option.
-`link` takes a function with the following signature, `function link(scope, element, attrs) { ... }`
-where:
+Directives that want to modify the DOM typically use the `link` option to register DOM listeners
+as well as update the DOM. It is executed after the template has been cloned and is where
+directive logic will be put.
+
+ `link` takes a function with the following signature,
+`function link(scope, element, attrs, controller, transcludeFn) { ... }`, where:
 
 * `scope` is an Angular scope object.
 * `element` is the jqLite-wrapped element that this directive matches.
 * `attrs` is a hash object with key-value pairs of normalized attribute names and their
   corresponding attribute values.
+* `controller` is the directive's required controller instance(s) or it's own controller (if any).
+  The exact value depends on the directive's require property.
+* `transcludeFn` is a transclude linking function pre-bound to the correct transclusion scope.
+
+<div class="alert alert-info">
+For more details on the `link` option refer to the {@link ng.$compile#-link- `$compile` API} page.
+</div>
 
 In our `link` function, we want to update the displayed time once a second, or whenever a user
 changes the time formatting string that our directive binds to. We will use the `$interval` service
@@ -751,9 +775,12 @@ own behavior to it.
     angular.module('docsIsoFnBindExample', [])
       .controller('Controller', ['$scope', '$timeout', function($scope, $timeout) {
         $scope.name = 'Tobias';
-        $scope.hideDialog = function () {
+        $scope.message = '';
+        $scope.hideDialog = function (message) {
+          $scope.message = message;
           $scope.dialogIsHidden = true;
           $timeout(function () {
+            $scope.message = '';
             $scope.dialogIsHidden = false;
           }, 2000);
         };
@@ -771,14 +798,15 @@ own behavior to it.
   </file>
   <file name="index.html">
     <div ng-controller="Controller">
-      <my-dialog ng-hide="dialogIsHidden" on-close="hideDialog()">
+      {{message}}
+      <my-dialog ng-hide="dialogIsHidden" on-close="hideDialog(message)">
         Check out the contents, {{name}}!
       </my-dialog>
     </div>
   </file>
   <file name="my-dialog-close.html">
     <div class="alert">
-      <a href class="close" ng-click="close()">&times;</a>
+      <a href class="close" ng-click="close({message: 'closing for now'})">&times;</a>
       <div ng-transclude></div>
     </div>
   </file>
@@ -795,8 +823,14 @@ callback functions to directive behaviors.
 
 When the user clicks the `x` in the dialog, the directive's `close` function is called, thanks to
 `ng-click.`  This call to `close` on the isolated scope actually evaluates the expression
-`hideDialog()` in the context of the original scope, thus running `Controller`'s `hideDialog`
+`hideDialog(message)` in the context of the original scope, thus running `Controller`'s `hideDialog`
 function.
+
+Often it's desirable to pass data from the isolate scope via an expression to the
+parent scope, this can be done by passing a map of local variable names and values into the expression
+wrapper fn. For example, the hideDialog function takes a message to display when the dialog is hidden.
+This is specified in the directive by calling `close({message: 'closing for now'})`. Then the local
+variable `message` will be available within the `on-close` expression.
 
 <div class="alert alert-success">
 **Best Practice:** use `&attr` in the `scope` option when you want your directive
@@ -817,37 +851,39 @@ element?
   <file name="script.js">
     angular.module('dragModule', [])
       .directive('myDraggable', ['$document', function($document) {
-        return function(scope, element, attr) {
-          var startX = 0, startY = 0, x = 0, y = 0;
+        return {
+          link: function(scope, element, attr) {
+            var startX = 0, startY = 0, x = 0, y = 0;
 
-          element.css({
-           position: 'relative',
-           border: '1px solid red',
-           backgroundColor: 'lightgrey',
-           cursor: 'pointer'
-          });
-
-          element.on('mousedown', function(event) {
-            // Prevent default dragging of selected content
-            event.preventDefault();
-            startX = event.pageX - x;
-            startY = event.pageY - y;
-            $document.on('mousemove', mousemove);
-            $document.on('mouseup', mouseup);
-          });
-
-          function mousemove(event) {
-            y = event.pageY - startY;
-            x = event.pageX - startX;
             element.css({
-              top: y + 'px',
-              left:  x + 'px'
+             position: 'relative',
+             border: '1px solid red',
+             backgroundColor: 'lightgrey',
+             cursor: 'pointer'
             });
-          }
 
-          function mouseup() {
-            $document.off('mousemove', mousemove);
-            $document.off('mouseup', mouseup);
+            element.on('mousedown', function(event) {
+              // Prevent default dragging of selected content
+              event.preventDefault();
+              startX = event.pageX - x;
+              startY = event.pageY - y;
+              $document.on('mousemove', mousemove);
+              $document.on('mouseup', mouseup);
+            });
+
+            function mousemove(event) {
+              y = event.pageY - startY;
+              x = event.pageX - startX;
+              element.css({
+                top: y + 'px',
+                left:  x + 'px'
+              });
+            }
+
+            function mouseup() {
+              $document.off('mousemove', mousemove);
+              $document.off('mouseup', mouseup);
+            }
           }
         };
       }]);
@@ -876,7 +912,7 @@ to which tab is active.
           restrict: 'E',
           transclude: true,
           scope: {},
-          controller: function($scope) {
+          controller: ['$scope', function($scope) {
             var panes = $scope.panes = [];
 
             $scope.select = function(pane) {
@@ -892,7 +928,7 @@ to which tab is active.
               }
               panes.push(pane);
             };
-          },
+          }],
           templateUrl: 'my-tabs.html'
         };
       })

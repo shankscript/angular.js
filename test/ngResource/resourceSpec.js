@@ -44,6 +44,7 @@ describe("resource", function() {
       expect(isValidDottedPath('1abc')).toBe(false);
       expect(isValidDottedPath('.')).toBe(false);
       expect(isValidDottedPath('$')).toBe(true);
+      expect(isValidDottedPath('@')).toBe(true);
       expect(isValidDottedPath('a')).toBe(true);
       expect(isValidDottedPath('A')).toBe(true);
       expect(isValidDottedPath('a1')).toBe(true);
@@ -53,12 +54,14 @@ describe("resource", function() {
       expect(isValidDottedPath('$.$')).toBe(true);
       expect(isValidDottedPath('.$')).toBe(false);
       expect(isValidDottedPath('$.')).toBe(false);
+      expect(isValidDottedPath('@.')).toBe(false);
+      expect(isValidDottedPath('.@')).toBe(false);
     });
   });
 
   describe('lookupDottedPath', function() {
     /* global lookupDottedPath: false */
-    var data = {a: {b: 'foo', c: null}};
+    var data = {a: {b: 'foo', c: null, '@d':'d-foo'},'@b':'b-foo'};
 
     it('should throw for invalid path', function() {
       expect(function() {
@@ -68,9 +71,11 @@ describe("resource", function() {
     });
 
     it('should get dotted paths', function() {
-      expect(lookupDottedPath(data, 'a')).toEqual({b: 'foo', c: null});
+      expect(lookupDottedPath(data, 'a')).toEqual({b: 'foo', c: null, '@d':'d-foo'});
       expect(lookupDottedPath(data, 'a.b')).toBe('foo');
       expect(lookupDottedPath(data, 'a.c')).toBeNull();
+      expect(lookupDottedPath(data, 'a.@d')).toBe('d-foo');
+      expect(lookupDottedPath(data, '@b')).toBe('b-foo');
     });
 
     it('should skip over null/undefined members', function() {
@@ -151,7 +156,7 @@ describe("resource", function() {
   });
 
 
-  it('should ignore slashes of undefinend parameters', function() {
+  it('should ignore slashes of undefined parameters', function() {
     var R = $resource('/Path/:a/:b/:c');
 
     $httpBackend.when('GET', '/Path').respond('{}');
@@ -176,7 +181,7 @@ describe("resource", function() {
     R.get({a:6, b:7, c:8});
   });
 
-  it('should not ignore leading slashes of undefinend parameters that have non-slash trailing sequence', function() {
+  it('should not ignore leading slashes of undefined parameters that have non-slash trailing sequence', function() {
     var R = $resource('/Path/:a.foo/:b.bar/:c.baz');
 
     $httpBackend.when('GET', '/Path/.foo/.bar.baz').respond('{}');
@@ -237,7 +242,7 @@ describe("resource", function() {
   });
 
   it('should not encode @ in url params', function() {
-    //encodeURIComponent is too agressive and doesn't follow http://www.ietf.org/rfc/rfc3986.txt
+    //encodeURIComponent is too aggressive and doesn't follow http://www.ietf.org/rfc/rfc3986.txt
     //with regards to the character set (pchar) allowed in path segments
     //so we need this test to make sure that we don't over-encode the params and break stuff like
     //buzz api which uses @self
@@ -292,6 +297,14 @@ describe("resource", function() {
     R.get({a: 'foo'});
   });
 
+  it('should support IPv6 URLs', function() {
+    var R = $resource('http://[2620:0:861:ed1a::1]/:ed1a/', {}, {}, {stripTrailingSlashes: false});
+    $httpBackend.expect('GET', 'http://[2620:0:861:ed1a::1]/foo/').respond({});
+    $httpBackend.expect('GET', 'http://[2620:0:861:ed1a::1]/').respond({});
+    R.get({ed1a: 'foo'});
+    R.get({});
+  });
+
   it('should support overriding provider default trailing-slash stripping configuration', function() {
     // Set the new behavior for all new resources created by overriding the
     // provider configuration
@@ -318,10 +331,18 @@ describe("resource", function() {
   });
 
 
-  it('should encode & in url params', function() {
-    var R = $resource('/Path/:a');
+  it('should encode & in query params unless in query param value', function() {
+    var R1 = $resource('/Path/:a');
     $httpBackend.expect('GET', '/Path/doh&foo?bar=baz%261').respond('{}');
-    R.get({a: 'doh&foo', bar: 'baz&1'});
+    R1.get({a: 'doh&foo', bar: 'baz&1'});
+
+    var R2 = $resource('/api/myapp/resource?:query');
+    $httpBackend.expect('GET', '/api/myapp/resource?foo&bar').respond('{}');
+    R2.get({query: 'foo&bar'});
+
+    var R3 = $resource('/api/myapp/resource?from=:from');
+    $httpBackend.expect('GET', '/api/myapp/resource?from=bar%20%26%20blanks').respond('{}');
+    R3.get({from: 'bar & blanks'});
   });
 
 
@@ -1295,7 +1316,7 @@ describe("resource", function() {
 });
 
 describe('resource', function() {
-  var $httpBackend, $resource;
+  var $httpBackend, $resource, $q;
 
   beforeEach(module(function($exceptionHandlerProvider) {
     $exceptionHandlerProvider.mode('log');
@@ -1306,6 +1327,7 @@ describe('resource', function() {
   beforeEach(inject(function($injector) {
     $httpBackend = $injector.get('$httpBackend');
     $resource = $injector.get('$resource');
+    $q = $injector.get('$q');
   }));
 
 
@@ -1322,7 +1344,7 @@ describe('resource', function() {
     expect(successSpy).not.toHaveBeenCalled();
     expect(failureSpy).toHaveBeenCalled();
     expect(failureSpy.mostRecentCall.args[0]).toMatch(
-        /^\[\$resource:badcfg\] Error in resource configuration for action `query`\. Expected response to contain an array but got an object/
+        /^\[\$resource:badcfg\] Error in resource configuration for action `query`\. Expected response to contain an array but got an object \(Request: GET \/Customer\/123\)/
       );
   });
 
@@ -1339,8 +1361,37 @@ describe('resource', function() {
     expect(successSpy).not.toHaveBeenCalled();
     expect(failureSpy).toHaveBeenCalled();
     expect(failureSpy.mostRecentCall.args[0]).toMatch(
-        /^\[\$resource:badcfg\] Error in resource configuration for action `get`\. Expected response to contain an object but got an array/
+        /^\[\$resource:badcfg\] Error in resource configuration for action `get`\. Expected response to contain an object but got an array \(Request: GET \/Customer\/123\)/
       );
+  });
+
+  it('should cancel the request if timeout promise is resolved', function() {
+    var canceler = $q.defer();
+
+    $httpBackend.when('GET', '/CreditCard').respond({data: '123'});
+
+    var CreditCard = $resource('/CreditCard', {}, {
+      query: {
+        method: 'GET',
+        timeout: canceler.promise
+      }
+    });
+
+    CreditCard.query();
+
+    canceler.resolve();
+    expect($httpBackend.flush).toThrow(new Error("No pending request to flush !"));
+
+    canceler = $q.defer();
+    CreditCard = $resource('/CreditCard', {}, {
+      query: {
+        method: 'GET',
+        timeout: canceler.promise
+      }
+    });
+
+    CreditCard.query();
+    expect($httpBackend.flush).not.toThrow();
   });
 
 
